@@ -1,0 +1,92 @@
+Docker Networks
+
+docker run -p 80:80 -d --name webhost nginx
+docker port webhost
+docker inspect --format '{{ .NetworkSettings.IPAddress }}' webhost // returns different ip than the host-ip because of virtual firewall in the virtual network
+
+
+Anywhere I do a docker container run <stuff> nginx , where nginx  is the image you should use, replace that with nginx:alpine , which still has ping command in it.
+
+commands->
+1 docker network ls // bridge network is also called docker0 in some distributions
+2 docker network create --driver
+3 docker network connect 
+4 docker network disconnect 
+
+docker network ls
+NETWORK ID     NAME      DRIVER    SCOPE
+056731771f0a   bridge    bridge    local //virtual network 
+8b4166665903   host      host      local //Direct connection
+e0ecfcc97739   none      null      local //Interface 
+
+docker netwoek inspect bridge 
+	will list all containers attached to it
+	has IPAM that has container ip assigned 
+docker netwoek inspect host
+	skips virtual network and connects host to container directly
+	
+Lets create a network 
+docker network create my_network
+	creates a new network with driver as bridge
+
+Lets create a nginx container with custom made above virtial network
+	docker run -d --name new_nginx --network my_network nginx
+	docker network inspect my_network // will shoe container linked in its json
+
+docker network ls >>
+NETWORK ID     NAME         DRIVER    SCOPE
+056731771f0a   bridge       bridge    local
+8b4166665903   host         host      local
+2a852ad9b785   my_network   bridge    local
+e0ecfcc97739   none         null      local
+
+connect webhost to my_network//
+	docker network connect 2a852ad9b785 webhost //Params: <net to connect> <container>
+	docker inspect webhost // will show webhost  connected to two networks
+dicconnect webhost from my_network//
+	docker network disconnect  2a852ad9b785 webhost
+	docker inspect webhost 
+	
+=======================================================DNS resolution===========================================
+docker  run -d --name my_nginx --network  my_network nginx
+docker inspect my_network // wil show two containers attached to this network 
+
+docker exec -it my_nginx ping new_nginx
+above might retrun ""ping": executable file not found" which says ping isnt installed
+docker container exec -it my_nginx bash
+	apt update
+	apt install iputils-ping
+	exit
+try again 
+	docker exec -it my_nginx ping new_nginx
+install ping in new_nginx too with above method to run below command
+	docker exec -it new_nginx ping my_nginx
+=======================================================Assignment1=================================================
+check curl version on two images of ubuntu:14.04 and centos:7
+remove the containers using --rm later
+to install curl 
+ubuntu:apt-get update && apt-get install curl
+cent:yum update curl
+
+Answers
+
+docker run --rm -it ubuntu:14.04 bash // rm  makes sure after exiting its removed permanently 
+apt-get update && apt-get install curl
+curl --version // curl 7.35.0
+
+docker run --rm -it entos:7 bash
+yum update curl
+curl --version //curl 7.29.0
+
+=======================================================Assignment2=================================================
+DNS Round robin test
+In the next assignment, you'll be using the tool nslookup inside the alpine:latest image, but in early 2020 there was a bug introduced to the latest Alpine image 3.11.3 that affects how nslookup works on hostnames, so for the next Assignment on DNS Round Robin, either change your command to work around it with nslookup search. (with a dot added) or use an older Alpine image like alpine:3.10. 
+
+create a virtual network(default bridge driver)
+create two containers from image elasticsearch:2 image
+using -network-alias while creating a container to give additional dns name
+
+Answer:
+	docker network create net
+	docker run -d --net net --name eser1 elasticsearch:2
+	docker run -d --net net --name eser2 elasticsearch:2
