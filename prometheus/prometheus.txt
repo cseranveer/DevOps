@@ -1,0 +1,118 @@
+#=====================================PROMETHEUS======================================
+-To monitor targets such as servers, databases, standalone virtual machines.
+-Records purely numberic time series
+#========================Start Prometheus as a service================================
+
+cp -r . /usr/local/bin/prometheus
+sudo vi /etc/systemd/system/prometheus.service
+#Add the script and save
+
+[Unit]
+Description=Prometheus Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/prometheus/prometheus --config.file=/usr/local/bin/prometheus/prometheus.yml
+
+[Install]
+WantedBy=multi-user.target
+
+# Start, Stop, Restart, Status (prometheus)
+sudo service prometheus start
+sudo service prometheus stop
+sudo service prometheus restart
+sudo service prometheus status
+#====================================================================================
+
+#===============DOWNLOAD AND INSTALL "NODE EXPORTER" AS A SERVICE====================
+cp node_exporter-0.18.1.linux-amd64/node_exporter /usr/local/bin/node_exporter
+sudo vi /etc/systemd/system/node-exporter.service
+#Add the script and save
+
+[Unit]
+Description=Prometheus Node Exporter Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+
+# Start, status (node-exporter)
+systemctl daemon-reload
+sudo service node-exporter start
+sudo service node-exporter status
+
+#===================Add new scrape config to prometheus.yml===========================
+sudo vi /usr/local/bin/prometheus/prometheus.yml 
+  - job_name: 'node-exporter'
+    static_configs:
+    - targets: ['localhost:9100']
+# Restart Prometheus
+sudo service prometheus restart
+sudo service prometheus status
+
+#====================================================================================
+
+#================================QUERIES=============================================
+scrape_duration_seconds 
+OR scrape_duration_seconds{instance="localhost:9100"}
+OR scrape_duration_seconds{instance="localhost:9100"}[5m] 
+node_cpu_seconds_total{mode=~".*irq"} # re2 syntax
+rate(scrape_duration_seconds{instance="localhost:9100"}[1m:20s]) # query as a function 
+#================================CREATE A RECORDING RULE=============================
+sudo vi /usr/local/bin/prometheus/prometheus_rules.yml
+#Add the script and save
+groups:
+  - name: custom_rules
+    rules:
+      - record: node_memory_MemFree_percent
+        expr: 100 - (100 * node_memory_MemFree_bytes / node_memory_MemTotal_bytes)
+
+      - record: node_filesystem_free_percent
+        expr: 100 * node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}
+
+# verify syntax with below command
+./promtool check rules prometheus_rules.yml
+- Restart prometheus
+#====================================================================================
+#============================INSTALL ALERT MANAGER===================================
+# Create Alert manager as service
+- Download alert manager
+cp -r . /usr/local/bin/alertmanager
+sudo vi/etc/systemd/system/alertmanager.service
+#Add the script and save
+[Unit]
+Description=Prometheus Alert Manager Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/alertmanager/alertmanager \
+        --config.file=/usr/local/bin/alertmanager/alertmanager.yml 
+[Install]
+WantedBy=multi-user.target
+
+# Start as service
+sudo service alertmanager start
+sudo service alertmanager status
+
+#================================CREATE A ALERT RULE=================================
+sudo vi /usr/local/bin/prometheus/prometheus_rules.yml
+#Add the script and save
+  - name: alert_rules
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance [{{ $labels.instance }}] down"
+          description: "[{{ $labels.instance }}] of job [{{ $labels.job }}] has been down for more than 1 minute."
+# verify syntax with below command
+./promtool check rules prometheus_rules.yml
+- Restart prometheus

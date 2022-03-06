@@ -1,0 +1,36 @@
+===========Connect to EC2 machine using ssh 
+ssh -i a.pem ec2-user@DNS  #a.pem is "key pair"(private key for server access)
+chmod 400 a.pem
+Add entry to .ssh/config for easy connect
+===========Private vs Public IP
+Private network servers use Gateway(Proxy) to communicate over internet
+stopping starting ec2 machine changes pubic ip, restarting has no effect
+===========EC2 user data scripts
+userdata.sh
+while creating a new instance>at "Configure Instance">under "Advance Details" user data script can be added
+bootstrap script or manifest file
+===========AMI(Amazon machine image)
+Create A custom image
+>Launch Instance
+>AMI(Amazon Linux)
+    Amazon Linux
+>Instance Type
+    t2.micro/large/xlarge/2xlarge or C5 family
+>Configure Instance
+    No. of instances/Networking/IAM role
+>Add Storage
+    General Purpose SSD, Provisioned SSD(I/P intensive)
+>Congigure Security group(Virtual Firewall)
+    Inbound/Outbound Rules:In/Out Traffic control
+    Inbound rule will have Protocols and ports that are exposed for deployed apps
+>Review
+Make changes to the instance in running state
+right click>image>create image> AMI is ready
+===========AMI Storage(Amazon S3)
+===========Choosing right Instance Type
+    Depends on:
+    RAM/CPU/IO/Networking/GPU
+    ec2instances.info
+    400% is 4 cores
+    iostat command
+===========Cloud Watch
