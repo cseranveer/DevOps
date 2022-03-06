@@ -38,3 +38,5 @@ docker rmi tag
 #delete container
 docker ps -a
 docker rm tag
+#git setup with token
+git remote add origin  https://cseranveer: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@github.com/cseranveer/DevOps.git
